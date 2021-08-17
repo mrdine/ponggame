@@ -2,11 +2,16 @@ const width = 800
 const height = 600
 
 const config = {
-  width: 800,
-  height: 600,
   type: Phaser.AUTO,
   audio: {
     disableWebAudio: true
+  },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    parent: 'phaser-example',
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 800,
+    height: 600
   },
   physics: {
     default: 'arcade',
@@ -52,12 +57,15 @@ function create() {
   gameManager.actualScene = this
   gameManager.p1 = this.physics.add.sprite(50, 300, 'p1').setImmovable();
   gameManager.p2 = this.physics.add.sprite(750, 300, 'p2').setImmovable();
-  gameManager.pontos.p1Text = this.add.text(50, 50, '0', { font: '64px Courier', fill: '#00ff00' });
-  gameManager.pontos.p2Text = this.add.text(700, 50, '0', { font: '64px Courier', fill: '#00ff00' });
+  gameManager.pontos.p1Text = this.add.text(120, 50, '0', { font: '50px Courier', fill: '#00ff00' });
+  gameManager.pontos.p2Text = this.add.text(680, 50, '0', { font: '50px Courier', fill: '#00ff00' });
 
 
   gameManager.p1.setScale(0.5)
   gameManager.p2.setScale(0.5)
+
+  gameManager.pontos.p1Text.setOrigin(0.5)
+  gameManager.pontos.p2Text.setOrigin(0.5)
 
   gameManager.inputs.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
   gameManager.inputs.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
