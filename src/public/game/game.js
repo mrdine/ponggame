@@ -36,8 +36,9 @@ const gameManager = {
   p2: {},
   bola: {},
   uiTexts: {},
+  audio: { bolaImpacts: [] },
   pontos: {
-    p1: 0, 
+    p1: 0,
     p2: 0,
     p1Text: '',
     p2Text: '',
@@ -51,7 +52,7 @@ const gameManager = {
     keyDown: '',
     keySpacebar: ''
   },
-  actualScene : '',
+  actualScene: '',
   gameState: GAME_STATE_IDLE,
   previousState: GAME_STATE_IDLE,
   maxScore: 3,
@@ -63,6 +64,12 @@ function preload() {
   this.load.image('p1', './assets/p1.png');
   this.load.image('p2', './assets/p2.png');
   this.load.image('bola', './assets/bola.png');
+
+  this.load.audio('cyberpunk', './assets/cyberpunk8bit.mp3')
+  this.load.audio('ponto', './assets/ponto.ogg')
+  for (let i = 1; i <= 5; i++) {
+    this.load.audio(`bolaImpact${i}`, `./assets/bola${i}.ogg`)
+  }
 }
 
 function create() {
@@ -76,6 +83,13 @@ function create() {
   gameManager.uiTexts.controlsText = this.add.text(400, 340, 'controls: WASD ↑←↓→', { font: '14px Courier', fill: '#00CC00', boundsAlignH: "center", boundsAlignV: "middle" });
   gameManager.uiTexts.winnerText = this.add.text(400, 240, 'player 0 wins', { font: '20px Courier', fill: '#00CC00', boundsAlignH: "center", boundsAlignV: "middle" });
   gameManager.uiTexts.matchsResume = this.add.text(300, 280, `matchs resume\nplayer 1: ${gameManager.pontos.p1Wins}\nplayer 2: ${gameManager.pontos.p2Wins}`, { font: '20px Courier', fill: '#00CC00', boundsAlignH: "center", boundsAlignV: "middle" });
+
+  gameManager.audio.cyberpunkMusic = this.sound.add('cyberpunk')
+  gameManager.audio.ponto = this.sound.add('ponto')
+  for (let i = 1; i <= 5; i++) {
+    gameManager.audio.bolaImpacts.push(this.sound.add(`bolaImpact${i}`))
+  }
+
 
   gameManager.uiTexts.startGameText.setOrigin(0.5)
   gameManager.uiTexts.controlsText.setOrigin(0.5)
@@ -106,6 +120,7 @@ function create() {
     processPontuou(body, up, down, left, right)
   })
 
+
   const primaryColor = Phaser.Display.Color.ValueToColor(0x00FF00)
   const secondaryColor = Phaser.Display.Color.ValueToColor(0x008800)
 
@@ -123,11 +138,11 @@ function create() {
         secondaryColor,
         100,
         value
-        )
-        
-        const color = Phaser.Display.Color.GetColor(colorObject.r, colorObject.g, colorObject.b)
+      )
 
-        gameManager.uiTexts.startGameText.setTint(color)
+      const color = Phaser.Display.Color.GetColor(colorObject.r, colorObject.g, colorObject.b)
+
+      gameManager.uiTexts.startGameText.setTint(color)
     }
   })
 
@@ -135,41 +150,43 @@ function create() {
 
 function update() {
 
-  
 
-  switch(gameManager.gameState) {
+
+  switch (gameManager.gameState) {
     case GAME_STATE_IDLE: {
-      
+
       // aguarda SPACEBAR pra startar jogo
       if (gameManager.inputs.keySpacebar.isDown)
         updateGameState(GAME_STATE_RUNNING);
 
     } break;
     case GAME_STATE_RUNNING: {
-
+      if (!gameManager.audio.cyberpunkMusic.isPlaying) {
+        gameManager.audio.cyberpunkMusic.play({ volume: 0.7, loop: true })
+      }
       if (gameManager.previousState == GAME_STATE_IDLE
         || gameManager.previousState == GAME_STATE_FINISHED) {
 
-          // reset stats
-          gameManager.pontos.p1 = 0;
-          gameManager.pontos.p2 = 0;
-          gameManager.pontos.p1Text.text = '0';
-          gameManager.pontos.p2Text.text = '0';
+        // reset stats
+        gameManager.pontos.p1 = 0;
+        gameManager.pontos.p2 = 0;
+        gameManager.pontos.p1Text.text = '0';
+        gameManager.pontos.p2Text.text = '0';
 
-          gameManager.currentWinner = 0;
+        gameManager.currentWinner = 0;
 
-          gameManager.pontos.p1Text.visible = true
-          gameManager.pontos.p2Text.visible = true
+        gameManager.pontos.p1Text.visible = true
+        gameManager.pontos.p2Text.visible = true
 
-          gameManager.uiTexts.startGameText.visible = false
-          gameManager.uiTexts.controlsText.visible = false
-          gameManager.uiTexts.winnerText.visible = false
-          gameManager.uiTexts.matchsResume.visible = false
+        gameManager.uiTexts.startGameText.visible = false
+        gameManager.uiTexts.controlsText.visible = false
+        gameManager.uiTexts.winnerText.visible = false
+        gameManager.uiTexts.matchsResume.visible = false
 
-          gameManager.p1.y = 300
-          gameManager.p2.y = 300
+        gameManager.p1.y = 300
+        gameManager.p2.y = 300
 
-          spawnBola(gameManager.actualScene)
+        spawnBola(gameManager.actualScene)
       }
 
       movePlayer(gameManager.p1, gameManager.inputs.keyW, gameManager.inputs.keyS)
@@ -178,7 +195,7 @@ function update() {
       gameManager.pontos.p1Text.setText(`${gameManager.pontos.p1}`)
       gameManager.pontos.p2Text.setText(`${gameManager.pontos.p2}`)
 
-      let w = hasWinner( gameManager.pontos.p1, gameManager.pontos.p2 );
+      let w = hasWinner(gameManager.pontos.p1, gameManager.pontos.p2);
       if (w) {
         gameManager.currentWinner = w;
         updateGameState(GAME_STATE_FINISHED);
@@ -234,19 +251,21 @@ function movePlayer(player, up, down) {
 }
 
 function processPontuou(body, up, down, left, right) {
-  if (pontuou(body, up, down, left, right))
-    if (!hasWinner( gameManager.pontos.p1, gameManager.pontos.p2 ))
+  if (pontuou(body, up, down, left, right)) {
+    gameManager.audio.ponto.play()
+    if (!hasWinner(gameManager.pontos.p1, gameManager.pontos.p2))
       respawnBola(gameManager.actualScene)
     else
       gameManager.bola.destroy()
+  }
 }
 
 function pontuou(body, up, down, left, right) {
-  if(right) {
+  if (right) {
     gameManager.pontos.p1 += 1
     return true;
   }
-  if(left) {
+  if (left) {
     gameManager.pontos.p2 += 1
     return true;
   }
@@ -265,23 +284,29 @@ function spawnBola(scene) {
   gameManager.bola.body.collideWorldBounds = true;
   gameManager.bola.body.onWorldBounds = true;
   //  scene gets it moving
-  let directionH = Phaser.Math.Between(1,2)
-  let directionV = Phaser.Math.Between(1,2)
-  let velocity = Phaser.Math.Between(300,400)
-  if(directionH === 2) {
+  let directionH = Phaser.Math.Between(1, 2)
+  let directionV = Phaser.Math.Between(1, 2)
+  let velocity = Phaser.Math.Between(300, 400)
+  if (directionH === 2) {
     directionH = -1
   }
-  if(directionV === 2) {
+  if (directionV === 2) {
     directionV = -1
-  } 
+  }
   gameManager.bola.body.velocity.setTo(velocity * directionH, velocity * directionV);
   //  scene sets the image bounce energy for the horizontal 
   //  and vertical vectors (as an x,y point). "1" is 100% energy return
   gameManager.bola.body.bounce.setTo(1, 1);
 
 
-  scene.physics.add.collider(gameManager.p1, gameManager.bola);
-  scene.physics.add.collider(gameManager.p2, gameManager.bola);
+  scene.physics.add.collider(gameManager.p1, gameManager.bola, playAudioBola);
+  scene.physics.add.collider(gameManager.p2, gameManager.bola, playAudioBola);
+
+
+}
+
+function playAudioBola() {
+  gameManager.audio.bolaImpacts[Phaser.Math.Between(0, 4)].play()
 }
 
 const game = new Phaser.Game(config);
