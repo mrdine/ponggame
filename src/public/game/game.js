@@ -302,7 +302,6 @@ function spawnBola(scene) {
   scene.physics.add.collider(gameManager.p1, gameManager.bola, playAudioBola);
   scene.physics.add.collider(gameManager.p2, gameManager.bola, playAudioBola);
 
-
 }
 
 function playAudioBola() {
