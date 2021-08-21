@@ -40,7 +40,9 @@ const gameManager = {
     p1: 0, 
     p2: 0,
     p1Text: '',
-    p2Text: ''
+    p2Text: '',
+    p1Wins: 0,
+    p2Wins: 0
   },
   inputs: {
     keyW: '',
@@ -70,9 +72,10 @@ function create() {
   gameManager.pontos.p1Text = this.add.text(220, 300, '0', { font: '90px Courier', fill: '#004400' });
   gameManager.pontos.p2Text = this.add.text(580, 300, '0', { font: '90px Courier', fill: '#004400' });
 
-  gameManager.uiTexts.startGameText = this.add.text(400, 300, 'tap spacebar to start', { font: '28px Courier', fill: '#ffffff', boundsAlignH: "center", boundsAlignV: "middle" });
+  gameManager.uiTexts.startGameText = this.add.text(400, 400, 'tap spacebar to start', { font: '28px Courier', fill: '#ffffff', boundsAlignH: "center", boundsAlignV: "middle" });
   gameManager.uiTexts.controlsText = this.add.text(400, 340, 'controls: WASD ↑←↓→', { font: '14px Courier', fill: '#00CC00', boundsAlignH: "center", boundsAlignV: "middle" });
   gameManager.uiTexts.winnerText = this.add.text(400, 240, 'player 0 wins', { font: '20px Courier', fill: '#00CC00', boundsAlignH: "center", boundsAlignV: "middle" });
+  gameManager.uiTexts.matchsResume = this.add.text(300, 280, `matchs resume\nplayer 1: ${gameManager.pontos.p1Wins}\nplayer 2: ${gameManager.pontos.p2Wins}`, { font: '20px Courier', fill: '#00CC00', boundsAlignH: "center", boundsAlignV: "middle" });
 
   gameManager.uiTexts.startGameText.setOrigin(0.5)
   gameManager.uiTexts.controlsText.setOrigin(0.5)
@@ -88,6 +91,7 @@ function create() {
 
   gameManager.pontos.p1Text.visible = false;
   gameManager.pontos.p2Text.visible = false;
+  gameManager.uiTexts.matchsResume.visible = false;
 
   gameManager.inputs.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
   gameManager.inputs.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
@@ -160,6 +164,7 @@ function update() {
           gameManager.uiTexts.startGameText.visible = false
           gameManager.uiTexts.controlsText.visible = false
           gameManager.uiTexts.winnerText.visible = false
+          gameManager.uiTexts.matchsResume.visible = false
 
           gameManager.p1.y = 300
           gameManager.p2.y = 300
@@ -177,6 +182,7 @@ function update() {
       if (w) {
         gameManager.currentWinner = w;
         updateGameState(GAME_STATE_FINISHED);
+        gameManager.pontos[`p${w}Wins`] += 1
       } else
         updateGameState(GAME_STATE_RUNNING);
 
@@ -189,6 +195,8 @@ function update() {
           gameManager.currentWinner + ' wins)'
         gameManager.uiTexts.winnerText.visible = true;
         gameManager.uiTexts.startGameText.visible = true;
+        gameManager.uiTexts.matchsResume.visible = true
+        gameManager.uiTexts.matchsResume.setText(`matchs resume\nplayer 1: ${gameManager.pontos.p1Wins}\nplayer 2: ${gameManager.pontos.p2Wins}`)
 
         gameManager.pontos.p1Text.visible = false
         gameManager.pontos.p2Text.visible = false
