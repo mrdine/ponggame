@@ -1,9 +1,14 @@
 const gameStatus = { idle: 0, running: 1, finished: 2 }
 
 const gameManager = {
+  socket: {},
   p1: {},
   p2: {},
   ball: {},
+  thisPlayer: null,
+  otherPlayer: null,
+  thisPlayerText: '',
+  spawnBallValues: {},
   uiTexts: {},
   audio: { ballImpacts: [] },
   score: {
@@ -28,8 +33,10 @@ const gameManager = {
   currentWinner: 0
 }
 
+let gamedata = {}
+
 function preload() {
-  this.load.setBaseURL(`/game`)
+  this.load.setBaseURL('/game')
   this.load.image('p1', './assets/images/p1.png')
   this.load.image('p2', './assets/images/p2.png')
   this.load.image('ball', './assets/images/ball.png')
@@ -42,6 +49,7 @@ function preload() {
 }
 
 function create() {
+  gameManager.socket = io()
   gameManager.actualScene = this
   gameManager.p1 = this.physics.add.sprite(50, 300, 'p1').setImmovable()
   gameManager.p2 = this.physics.add.sprite(750, 300, 'p2').setImmovable()
@@ -57,7 +65,7 @@ function create() {
   gameManager.uiTexts.controlsText = this.add.text(
     400,
     300,
-    'Controls\n\nP1: W A S D\nP2: ↑ ← ↓ →',
+    'Controls\n\nW A S D',
     {
       font: '18px Courier',
       fill: '#00CC00',
@@ -126,6 +134,7 @@ function create() {
   gameManager.inputs.keySpacebar = this.input.keyboard.addKey(
     Phaser.Input.Keyboard.KeyCodes.SPACE
   )
+
   gameManager.p1.body.collideWorldBounds = true
   gameManager.p2.body.collideWorldBounds = true
 
@@ -161,6 +170,84 @@ function create() {
       gameManager.uiTexts.startGameText.setTint(color)
     }
   })
+
+  // socket
+  gameManager.socket.on('currentPlayers', function (players) {
+    gameManager.p1.name = 'player 1'
+    gameManager.p2.name = 'player 2'
+
+    if (!gameManager.thisPlayer) {
+      let myNumberPlayer = players[gameManager.socket.id].playerNumber
+
+      if (myNumberPlayer === 1) {
+        gameManager.thisPlayer = gameManager.p1
+        gameManager.thisPlayerText = 'p1'
+        gameManager.otherPlayer = gameManager.p2
+      } else {
+        gameManager.thisPlayer = gameManager.p2
+        gameManager.thisPlayerText = 'p2'
+        gameManager.otherPlayer = gameManager.p1
+      }
+
+      console.log(gameManager.thisPlayer.name)
+      console.log(gameManager.thisPlayerText)
+    }
+  })
+
+  gameManager.socket.on('playerLeft', function (game) {
+    window.location.reload()
+    //supdateGameState(gameStatus.idle)
+  })
+
+  gameManager.socket.on('startGame', function () {
+    if (gameManager.thisPlayer === gameManager.p1) {
+      console.log('Servidor mandou iniciar o jogo')
+      gameManager.maxScore = 5
+      gameManager.spawnBallValues = getSpawnBallValues()
+
+      // enviar dados para o servidor repassar para o p2
+      gamedata = {
+        p1: gameManager.p1,
+        ball: gameManager.ball,
+        score: gameManager.score,
+        maxScore: gameManager.maxScore,
+        spawnBallValues: gameManager.spawnBallValues,
+        gameState: gameManager.gameState,
+        previousState: gameManager.previousState
+      }
+      gameManager.socket.emit('startGame', gamedata)
+      updateGameState(gameStatus.running)
+    }
+  })
+
+  gameManager.socket.on('clientStartGame', function (gamedata) {
+    if (gameManager.thisPlayer === gameManager.p2) {
+      gameManager.maxScore = gamedata.maxScore
+      gameManager.spawnBallValues = gamedata.spawnBallValues
+      gameManager.gameState = gamedata.gameState
+      gameManager.previousState = gamedata.previousState
+      gameManager.score.p1 = gamedata.score.p1
+      gameManager.score.p2 = gamedata.score.p2
+      gameManager.score.p1Wins = gamedata.score.p1Wins
+      gameManager.score.p2Wins = gamedata.score.p2Wins
+
+      updateGameState(gameStatus.running)
+    }
+  })
+
+  gameManager.socket.on('updateGame', function (data) {
+    if (data.player === 'p1') {
+      gameManager.p1.y = data.playerObject.y
+      gameManager.ball.x = data.ball.x
+      gameManager.ball.y = data.ball.y
+      gameManager.score.p1 = data.score.p1
+      gameManager.score.p2 = data.score.p2
+      gameManager.score.p1Wins = data.score.p1Wins
+      gameManager.score.p1Wins = data.score.p1Wins
+    } else {
+      gameManager.p2.y = data.playerObject.y
+    }
+  })
 }
 
 function update() {
@@ -173,56 +260,54 @@ function update() {
 
       break
     case gameStatus.running:
-      if (!gameManager.audio.cyberpunkMusic.isPlaying) {
-        gameManager.audio.cyberpunkMusic.play({ volume: 0.7, loop: true })
+      {
+        if (!gameManager.audio.cyberpunkMusic.isPlaying) {
+          gameManager.audio.cyberpunkMusic.play({ volume: 0.7, loop: true })
+        }
+        if (
+          gameManager.previousState == gameStatus.idle ||
+          gameManager.previousState == gameStatus.finished
+        ) {
+          // reset stats
+          gameManager.score.p1 = 0
+          gameManager.score.p2 = 0
+          gameManager.score.p1Text.text = '0'
+          gameManager.score.p2Text.text = '0'
+
+          gameManager.currentWinner = 0
+
+          gameManager.score.p1Text.visible = true
+          gameManager.score.p2Text.visible = true
+
+          gameManager.uiTexts.startGameText.visible = false
+          gameManager.uiTexts.controlsText.visible = false
+          gameManager.uiTexts.winnerText.visible = false
+          gameManager.uiTexts.matchsResume.visible = false
+
+          spawnBall(
+            gameManager.actualScene,
+            gameManager.spawnBallValues.directionH,
+            gameManager.spawnBallValues.directionV,
+            gameManager.spawnBallValues.velocity
+          )
+        }
+
+        movePlayer(
+          gameManager.thisPlayer,
+          gameManager.inputs.keyW,
+          gameManager.inputs.keyS
+        )
+
+        gameManager.score.p1Text.setText(`${gameManager.score.p1}`)
+        gameManager.score.p2Text.setText(`${gameManager.score.p2}`)
+
+        const winner = hasWinner(gameManager.score.p1, gameManager.score.p2)
+        if (winner) {
+          gameManager.currentWinner = winner
+          updateGameState(gameStatus.finished)
+          gameManager.score[`p${winner}Wins`] += 1
+        } else updateGameState(gameStatus.running)
       }
-      if (
-        gameManager.previousState == gameStatus.idle ||
-        gameManager.previousState == gameStatus.finished
-      ) {
-        // reset stats
-        gameManager.score.p1 = 0
-        gameManager.score.p2 = 0
-        gameManager.score.p1Text.text = '0'
-        gameManager.score.p2Text.text = '0'
-
-        gameManager.currentWinner = 0
-
-        gameManager.score.p1Text.visible = true
-        gameManager.score.p2Text.visible = true
-
-        gameManager.uiTexts.startGameText.visible = false
-        gameManager.uiTexts.controlsText.visible = false
-        gameManager.uiTexts.winnerText.visible = false
-        gameManager.uiTexts.matchsResume.visible = false
-
-        gameManager.p1.y = 300
-        gameManager.p2.y = 300
-
-        spawnBall(gameManager.actualScene)
-      }
-
-      movePlayer(
-        gameManager.p1,
-        gameManager.inputs.keyW,
-        gameManager.inputs.keyS
-      )
-      movePlayer(
-        gameManager.p2,
-        gameManager.inputs.keyUp,
-        gameManager.inputs.keyDown
-      )
-
-      gameManager.score.p1Text.setText(`${gameManager.score.p1}`)
-      gameManager.score.p2Text.setText(`${gameManager.score.p2}`)
-
-      const winner = hasWinner(gameManager.score.p1, gameManager.score.p2)
-      if (winner) {
-        gameManager.currentWinner = winner
-        updateGameState(gameStatus.finished)
-        gameManager.score[`p${winner}Wins`] += 1
-      } else updateGameState(gameStatus.running)
-
       break
     case gameStatus.finished:
       if (gameManager.previousState == gameStatus.running) {
@@ -238,11 +323,12 @@ function update() {
         gameManager.score.p2Text.visible = false
 
         updateGameState(gameStatus.idle)
-      } else updateGameState(gameStatus.finished)
+      } else {
+        updateGameState(gameStatus.finished)
+      }
 
       gameManager.score.p1Text.setText(`${gameManager.score.p1}`)
       gameManager.score.p2Text.setText(`${gameManager.score.p2}`)
-
       break
   }
 }
@@ -261,42 +347,70 @@ function updateGameState(newState) {
 function movePlayer(player, up, down) {
   if (up.isDown) player.y -= 10
   else if (down.isDown) player.y += 10
+
+  let ball = ''
+  let score = ''
+  if (gameManager.thisPlayerText === 'p1') {
+    ball = gameManager.ball
+    score = gameManager.score
+  }
+  gameManager.socket.emit('syncGame', {
+    playerObject: player,
+    player: gameManager.thisPlayerText,
+    ball: ball,
+    score: score
+  })
 }
 
-function processScored(_body, _up, _down, left, right) {
-  if (scored(left, right)) {
+function scored(body, up, down, left, right) {
+  let whoScored = ''
+  let wasPointScored = false
+
+  if (right) {
+    gameManager.score.p1++
+    whoScored = 'p1'
+    wasPointScored = true
+  } else if (left) {
+    gameManager.score.p2++
+    whoScored = 'p2'
+    wasPointScored = true
+  }
+
+  return { wasPointScored, whoScored }
+}
+
+function processScored(body, up, down, left, right) {
+  const scoreStatus = scored(body, up, down, left, right)
+  if (scoreStatus.wasPointScored) {
     gameManager.audio.point.play()
+    //gameManager.socket.emit('pontuou', { quem: quemPontuou.quem, score: { p1: gameManager.score.p1, p2: gameManager.score.p2 } })
+
     if (!hasWinner(gameManager.score.p1, gameManager.score.p2))
       respawnBall(gameManager.actualScene)
     else gameManager.ball.destroy()
   }
 }
 
-function scored(left, right) {
-  if (!right && !left) return false
-
-  if (right) gameManager.score.p1++
-  else if (left) gameManager.score.p2++
-
-  return true
-}
-
 function respawnBall(scene) {
   gameManager.ball.destroy()
-  spawnBall(scene)
+  spawnBall(
+    scene,
+    gameManager.spawnBallValues.directionH,
+    gameManager.spawnBallValues.directionV,
+    gameManager.spawnBallValues.velocity
+  )
 }
 
-function spawnBall(scene) {
+function spawnBall(scene, directionH, directionV, velocity) {
   gameManager.ball = scene.physics.add.sprite(400, 400, 'ball')
   gameManager.ball.setScale(0.25)
   gameManager.ball.body.collideWorldBounds = true
   gameManager.ball.body.onWorldBounds = true
   //  scene gets it moving
   const directions = {
-    horizontal: Phaser.Math.Between(1, 2),
-    vertical: Phaser.Math.Between(1, 2)
+    horizontal: directionH,
+    vertical: directionV
   }
-  const velocity = Phaser.Math.Between(300, 350)
 
   if (directions.horizontal === 2) directions.horizontal = -1
   if (directions.vertical === 2) directions.vertical = -1
@@ -315,6 +429,19 @@ function spawnBall(scene) {
 
 function playAudioBall() {
   gameManager.audio.ballImpacts[Phaser.Math.Between(0, 4)].play()
+}
+
+function getRndInteger(min, max) {
+  return Math.floor(Math.random() * (max - min)) + min
+}
+
+function getSpawnBallValues() {
+  const values = {
+    directionH: getRndInteger(1, 3),
+    directionV: getRndInteger(1, 3),
+    velocity: getRndInteger(300, 401)
+  }
+  return values
 }
 
 const windowSize = { width: 800, height: 600 }
