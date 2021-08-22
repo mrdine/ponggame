@@ -32,9 +32,13 @@ const GAME_STATE_RUNNING = 1;
 const GAME_STATE_FINISHED = 2;
 
 const gameManager = {
+  socket: {},
   p1: {},
   p2: {},
+  thisPlayer: null,
+  otherPlayer: null,
   bola: {},
+  spawnBolaValues: {},
   uiTexts: {},
   audio: { bolaImpacts: [] },
   pontos: {
@@ -73,6 +77,7 @@ function preload() {
 }
 
 function create() {
+  gameManager.socket = io()
   gameManager.actualScene = this
   gameManager.p1 = this.physics.add.sprite(50, 300, 'p1').setImmovable();
   gameManager.p2 = this.physics.add.sprite(750, 300, 'p2').setImmovable();
@@ -146,6 +151,51 @@ function create() {
     }
   })
 
+  // socket
+  gameManager.socket.on('currentPlayers', function (players) {
+    gameManager.p1.nome = 'player 1'
+    gameManager.p2.nome = 'player 2'
+    if (!gameManager.thisPlayer) {
+      let myNumberPlayer = players[gameManager.socket.id].playerNumber
+      if (myNumberPlayer === 1) {
+        gameManager.thisPlayer = gameManager.p1
+        gameManager.otherPlayer = gameManager.p2
+      } else {
+        gameManager.thisPlayer = gameManager.p2
+        gameManager.otherPlayer = gameManager.p1
+      }
+
+      console.log(gameManager.thisPlayer.nome)
+    }
+  });
+
+  gameManager.socket.on('playerSaiu', function(game) {
+    window.location.reload()
+    updateGameState(GAME_STATE_IDLE)
+  })
+
+  gameManager.socket.on('startGame', function (game) {
+    console.log('Servidor mandou iniciar o jogo')
+    updateGameState(game.gameState)
+    gameManager.maxScore = game.maxScore
+    gameManager.spawnBolaValues = game.spawnBolaValues
+  })
+
+  gameManager.socket.on('respostaPontuou', function(game) {
+    //console.log('')
+    gameManager.bola.destroy()
+
+    gameManager.spawnBolaValues = game.spawnBolaValues
+    gameManager.pontos.p1 = game.pontos.p1
+    gameManager.pontos.p2 = game.pontos.p2
+    console.log(gameManager.pontos)
+    if (!hasWinner(gameManager.pontos.p1, gameManager.pontos.p2))
+      respawnBola(gameManager.actualScene)
+    else
+      gameManager.bola.destroy()
+    
+  })
+
 }
 
 function update() {
@@ -162,7 +212,7 @@ function update() {
     } break;
     case GAME_STATE_RUNNING: {
       if (!gameManager.audio.cyberpunkMusic.isPlaying) {
-        gameManager.audio.cyberpunkMusic.play({ volume: 0.7, loop: true })
+        //gameManager.audio.cyberpunkMusic.play({ volume: 0.7, loop: true })
       }
       if (gameManager.previousState == GAME_STATE_IDLE
         || gameManager.previousState == GAME_STATE_FINISHED) {
@@ -186,7 +236,7 @@ function update() {
         gameManager.p1.y = 300
         gameManager.p2.y = 300
 
-        spawnBola(gameManager.actualScene)
+        spawnBola(gameManager.actualScene, gameManager.spawnBolaValues.directionH, gameManager.spawnBolaValues.directionV, gameManager.spawnBolaValues.velocity)
       }
 
       movePlayer(gameManager.p1, gameManager.inputs.keyW, gameManager.inputs.keyS)
@@ -251,42 +301,49 @@ function movePlayer(player, up, down) {
 }
 
 function processPontuou(body, up, down, left, right) {
-  if (pontuou(body, up, down, left, right)) {
+  let quemPontuou = pontuou(body, up, down, left, right)
+  if (quemPontuou.pontuou) {
     gameManager.audio.ponto.play()
+    gameManager.socket.emit('pontuou', { quem: quemPontuou.quem, pontos: { p1: gameManager.pontos.p1, p2: gameManager.pontos.p2 } })
+    /*
     if (!hasWinner(gameManager.pontos.p1, gameManager.pontos.p2))
       respawnBola(gameManager.actualScene)
     else
       gameManager.bola.destroy()
+    */
   }
 }
 
 function pontuou(body, up, down, left, right) {
+  let quem = ''
+  let pontuou = false
   if (right) {
     gameManager.pontos.p1 += 1
-    return true;
+    quem = 'p1'
+    pontuou = true
+    return { pontuou, quem };
   }
   if (left) {
     gameManager.pontos.p2 += 1
-    return true;
+    quem = 'p2'
+    pontuou = true
+    return { pontuou, quem };
   }
 
-  return false;
+  return { pontuou, quem };
 }
 
 function respawnBola(scene) {
   gameManager.bola.destroy()
-  spawnBola(scene)
+  spawnBola(scene, gameManager.spawnBolaValues.directionH, gameManager.spawnBolaValues.directionV, gameManager.spawnBolaValues.velocity)
 }
 
-function spawnBola(scene) {
+function spawnBola(scene, directionH, directionV, velocity) {
   gameManager.bola = scene.physics.add.sprite(400, 400, 'bola');
   gameManager.bola.setScale(0.25)
   gameManager.bola.body.collideWorldBounds = true;
   gameManager.bola.body.onWorldBounds = true;
-  //  scene gets it moving
-  let directionH = Phaser.Math.Between(1, 2)
-  let directionV = Phaser.Math.Between(1, 2)
-  let velocity = Phaser.Math.Between(300, 400)
+
   if (directionH === 2) {
     directionH = -1
   }
