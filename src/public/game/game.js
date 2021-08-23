@@ -1,32 +1,3 @@
-const windowSize = { width: 800, height: 600 }
-
-// TODO @imns1ght: create a config.js
-const phaserConfig = {
-  type: Phaser.AUTO,
-  audio: {
-    disableWebAudio: true
-  },
-  scale: {
-    mode: Phaser.Scale.FIT,
-    parent: 'phaser-example',
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: windowSize.width,
-    height: windowSize.height
-  },
-  physics: {
-    default: 'arcade',
-    arcade: {
-      fps: 60,
-      gravity: { y: 0 }
-    }
-  },
-  scene: {
-    preload: preload,
-    create: create,
-    update: update
-  }
-}
-
 const gameStatus = { idle: 0, running: 1, finished: 2 }
 
 const gameManager = {
@@ -155,7 +126,6 @@ function create() {
   gameManager.inputs.keySpacebar = this.input.keyboard.addKey(
     Phaser.Input.Keyboard.KeyCodes.SPACE
   )
-
   gameManager.p1.body.collideWorldBounds = true
   gameManager.p2.body.collideWorldBounds = true
 
@@ -196,85 +166,83 @@ function create() {
 function update() {
   switch (gameManager.gameState) {
     case gameStatus.idle:
-      {
-        // aguarda SPACEBAR pra startar jogo
-        if (gameManager.inputs.keySpacebar.isDown)
-          updateGameState(gameStatus.running)
+      // Start the game if spacebar is pressed
+      if (gameManager.inputs.keySpacebar.isDown) {
+        updateGameState(gameStatus.running)
       }
+
       break
     case gameStatus.running:
-      {
-        if (!gameManager.audio.cyberpunkMusic.isPlaying) {
-          gameManager.audio.cyberpunkMusic.play({ volume: 0.7, loop: true })
-        }
-        if (
-          gameManager.previousState == gameStatus.idle ||
-          gameManager.previousState == gameStatus.finished
-        ) {
-          // reset stats
-          gameManager.score.p1 = 0
-          gameManager.score.p2 = 0
-          gameManager.score.p1Text.text = '0'
-          gameManager.score.p2Text.text = '0'
-
-          gameManager.currentWinner = 0
-
-          gameManager.score.p1Text.visible = true
-          gameManager.score.p2Text.visible = true
-
-          gameManager.uiTexts.startGameText.visible = false
-          gameManager.uiTexts.controlsText.visible = false
-          gameManager.uiTexts.winnerText.visible = false
-          gameManager.uiTexts.matchsResume.visible = false
-
-          gameManager.p1.y = 300
-          gameManager.p2.y = 300
-
-          spawnBall(gameManager.actualScene)
-        }
-
-        movePlayer(
-          gameManager.p1,
-          gameManager.inputs.keyW,
-          gameManager.inputs.keyS
-        )
-        movePlayer(
-          gameManager.p2,
-          gameManager.inputs.keyUp,
-          gameManager.inputs.keyDown
-        )
-
-        gameManager.score.p1Text.setText(`${gameManager.score.p1}`)
-        gameManager.score.p2Text.setText(`${gameManager.score.p2}`)
-
-        const winner = hasWinner(gameManager.score.p1, gameManager.score.p2)
-        if (winner) {
-          gameManager.currentWinner = winner
-          updateGameState(gameStatus.finished)
-          gameManager.score[`p${winner}Wins`] += 1
-        } else updateGameState(gameStatus.running)
+      if (!gameManager.audio.cyberpunkMusic.isPlaying) {
+        gameManager.audio.cyberpunkMusic.play({ volume: 0.7, loop: true })
       }
+      if (
+        gameManager.previousState == gameStatus.idle ||
+        gameManager.previousState == gameStatus.finished
+      ) {
+        // reset stats
+        gameManager.score.p1 = 0
+        gameManager.score.p2 = 0
+        gameManager.score.p1Text.text = '0'
+        gameManager.score.p2Text.text = '0'
+
+        gameManager.currentWinner = 0
+
+        gameManager.score.p1Text.visible = true
+        gameManager.score.p2Text.visible = true
+
+        gameManager.uiTexts.startGameText.visible = false
+        gameManager.uiTexts.controlsText.visible = false
+        gameManager.uiTexts.winnerText.visible = false
+        gameManager.uiTexts.matchsResume.visible = false
+
+        gameManager.p1.y = 300
+        gameManager.p2.y = 300
+
+        spawnBall(gameManager.actualScene)
+      }
+
+      movePlayer(
+        gameManager.p1,
+        gameManager.inputs.keyW,
+        gameManager.inputs.keyS
+      )
+      movePlayer(
+        gameManager.p2,
+        gameManager.inputs.keyUp,
+        gameManager.inputs.keyDown
+      )
+
+      gameManager.score.p1Text.setText(`${gameManager.score.p1}`)
+      gameManager.score.p2Text.setText(`${gameManager.score.p2}`)
+
+      const winner = hasWinner(gameManager.score.p1, gameManager.score.p2)
+      if (winner) {
+        gameManager.currentWinner = winner
+        updateGameState(gameStatus.finished)
+        gameManager.score[`p${winner}Wins`] += 1
+      } else updateGameState(gameStatus.running)
+
       break
     case gameStatus.finished:
-      {
-        if (gameManager.previousState == gameStatus.running) {
-          gameManager.uiTexts.winnerText.text = `Player ${gameManager.currentWinner} wins! (${gameManager.score.p1} - ${gameManager.score.p2})`
-          gameManager.uiTexts.winnerText.visible = true
-          gameManager.uiTexts.startGameText.visible = true
-          gameManager.uiTexts.matchsResume.visible = true
-          gameManager.uiTexts.matchsResume.setText(
-            `Score\n\nP1: ${gameManager.score.p1Wins}\nP2: ${gameManager.score.p2Wins}`
-          )
+      if (gameManager.previousState == gameStatus.running) {
+        gameManager.uiTexts.winnerText.text = `Player ${gameManager.currentWinner} wins! (${gameManager.score.p1} - ${gameManager.score.p2})`
+        gameManager.uiTexts.winnerText.visible = true
+        gameManager.uiTexts.startGameText.visible = true
+        gameManager.uiTexts.matchsResume.visible = true
+        gameManager.uiTexts.matchsResume.setText(
+          `Score\n\nP1: ${gameManager.score.p1Wins}\nP2: ${gameManager.score.p2Wins}`
+        )
 
-          gameManager.score.p1Text.visible = false
-          gameManager.score.p2Text.visible = false
+        gameManager.score.p1Text.visible = false
+        gameManager.score.p2Text.visible = false
 
-          updateGameState(gameStatus.idle)
-        } else updateGameState(gameStatus.finished)
+        updateGameState(gameStatus.idle)
+      } else updateGameState(gameStatus.finished)
 
-        gameManager.score.p1Text.setText(`${gameManager.score.p1}`)
-        gameManager.score.p2Text.setText(`${gameManager.score.p2}`)
-      }
+      gameManager.score.p1Text.setText(`${gameManager.score.p1}`)
+      gameManager.score.p2Text.setText(`${gameManager.score.p2}`)
+
       break
   }
 }
@@ -324,16 +292,18 @@ function spawnBall(scene) {
   gameManager.ball.body.collideWorldBounds = true
   gameManager.ball.body.onWorldBounds = true
   //  scene gets it moving
-  let directionH = Phaser.Math.Between(1, 2)
-  let directionV = Phaser.Math.Between(1, 2)
-  let velocity = Phaser.Math.Between(350, 400)
+  const directions = {
+    horizontal: Phaser.Math.Between(1, 2),
+    vertical: Phaser.Math.Between(1, 2)
+  }
+  const velocity = Phaser.Math.Between(400, 450)
 
-  if (directionH === 2) directionH = -1
-  if (directionV === 2) directionV = -1
+  if (directions.horizontal === 2) directions.horizontal = -1
+  if (directions.vertical === 2) directions.vertical = -1
 
   gameManager.ball.body.velocity.setTo(
-    velocity * directionH,
-    velocity * directionV
+    velocity * directions.horizontal,
+    velocity * directions.vertical
   )
   //  scene sets the image bounce energy for the horizontal
   //  and vertical vectors (as an x,y point). "1" is 100% energy return
@@ -345,6 +315,35 @@ function spawnBall(scene) {
 
 function playAudioBall() {
   gameManager.audio.ballImpacts[Phaser.Math.Between(0, 4)].play()
+}
+
+const windowSize = { width: 800, height: 600 }
+
+// TODO @imns1ght: create a config.js
+const phaserConfig = {
+  type: Phaser.AUTO,
+  audio: {
+    disableWebAudio: true
+  },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    parent: 'phaser-example',
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: windowSize.width,
+    height: windowSize.height
+  },
+  physics: {
+    default: 'arcade',
+    arcade: {
+      fps: 60,
+      gravity: { y: 0 }
+    }
+  },
+  scene: {
+    preload: preload,
+    create: create,
+    update: update
+  }
 }
 
 const game = new Phaser.Game(phaserConfig)

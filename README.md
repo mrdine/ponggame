@@ -16,13 +16,14 @@ Assuming that you have installed [Git](https://git-scm.com/) and [NodeJS LTS](ht
    ```bash
    git clone https://github.com/mrdine/ponggame/ && cd ponggame/
    ```
+
 2. Install the required packages
 
    ```bash
    npm install
    ```
 
-3. Runnning
+3. Running
 
     Start the server:
 
@@ -33,7 +34,7 @@ Assuming that you have installed [Git](https://git-scm.com/) and [NodeJS LTS](ht
     Open your preferred browser and access:
 
     ```bash
-    https://localhost:3000
+    http://localhost:3000
     ```
 
 ## TODO
