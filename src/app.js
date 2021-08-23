@@ -1,12 +1,13 @@
-const express = require('express');
-const app = express();
+import express from 'express'
+const app = express()
+const port = 3000
 
-app.use(express.static(__dirname + '/public'));
+app.use(express.static(__dirname + '/public'))
 
-app.get('/', function (req, res) {
-  res.sendFile(__dirname + '/public/views/index.html');
-});
+app.get('/', (_req, res) => {
+  res.sendFile(__dirname + '/public/views/index.html')
+})
 
-app.listen(3000, () => {
-  console.log('Server listening on http://localhost:3000');
-});
+app.listen(port, () => {
+  console.log(`Server listening on http://localhost:${port}`)
+})
