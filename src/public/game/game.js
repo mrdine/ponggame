@@ -24,7 +24,7 @@ const gameManager = {
   actualScene: '',
   gameState: gameStatus.idle,
   previousState: gameStatus.idle,
-  maxScore: 5,
+  maxScore: 3,
   currentWinner: 0
 }
 
@@ -296,7 +296,7 @@ function spawnBall(scene) {
     horizontal: Phaser.Math.Between(1, 2),
     vertical: Phaser.Math.Between(1, 2)
   }
-  const velocity = Phaser.Math.Between(400, 450)
+  const velocity = Phaser.Math.Between(300, 350)
 
   if (directions.horizontal === 2) directions.horizontal = -1
   if (directions.vertical === 2) directions.vertical = -1
