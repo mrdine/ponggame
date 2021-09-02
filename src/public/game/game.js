@@ -37,6 +37,7 @@ const gameManager = {
   p2: {},
   thisPlayer: null,
   otherPlayer: null,
+  thisPlayerText: '',
   bola: {},
   spawnBolaValues: {},
   uiTexts: {},
@@ -62,6 +63,8 @@ const gameManager = {
   maxScore: 3,
   currentWinner: 0
 }
+
+let gamedata = {}
 
 function preload() {
   this.load.setBaseURL(`/game`);
@@ -159,41 +162,76 @@ function create() {
       let myNumberPlayer = players[gameManager.socket.id].playerNumber
       if (myNumberPlayer === 1) {
         gameManager.thisPlayer = gameManager.p1
+        gameManager.thisPlayerText = 'p1'
         gameManager.otherPlayer = gameManager.p2
       } else {
         gameManager.thisPlayer = gameManager.p2
+        gameManager.thisPlayerText = 'p2'
         gameManager.otherPlayer = gameManager.p1
       }
 
       console.log(gameManager.thisPlayer.nome)
+      console.log(gameManager.thisPlayerText)
+
     }
   });
 
-  gameManager.socket.on('playerSaiu', function(game) {
+  gameManager.socket.on('playerSaiu', function (game) {
     window.location.reload()
-    updateGameState(GAME_STATE_IDLE)
+    //supdateGameState(GAME_STATE_IDLE)
   })
 
-  gameManager.socket.on('startGame', function (game) {
-    console.log('Servidor mandou iniciar o jogo')
-    updateGameState(game.gameState)
-    gameManager.maxScore = game.maxScore
-    gameManager.spawnBolaValues = game.spawnBolaValues
+  gameManager.socket.on('startGame', function () {
+    if (gameManager.thisPlayer === gameManager.p1) {
+      console.log('Servidor mandou iniciar o jogo')
+      gameManager.maxScore = 5
+      gameManager.spawnBolaValues = getSpawnBolaValues()
+
+      // enviar dados para o servidor repassar para o p2
+        gamedata = {
+        p1: gameManager.p1,
+        bola: gameManager.bola,
+        pontos: gameManager.pontos,
+        maxScore: gameManager.maxScore,
+        spawnBolaValues: gameManager.spawnBolaValues,
+        gameState: gameManager.gameState,
+        previousState: gameManager.previousState
+      }
+      gameManager.socket.emit('repasseStartGame', gamedata)
+      updateGameState(GAME_STATE_RUNNING)
+    }
+
   })
 
-  gameManager.socket.on('respostaPontuou', function(game) {
-    //console.log('')
-    gameManager.bola.destroy()
+  gameManager.socket.on('clientStartGame', function (gamedata) {
+    if(gameManager.thisPlayer === gameManager.p2) {
+      gameManager.maxScore = gamedata.maxScore
+      gameManager.spawnBolaValues = gamedata.spawnBolaValues
+      gameManager.gameState = gamedata.gameState
+      gameManager.previousState = gamedata.previousState
+      gameManager.pontos.p1 = gamedata.pontos.p1
+      gameManager.pontos.p2 = gamedata.pontos.p2
+      gameManager.pontos.p1Wins = gamedata.pontos.p1Wins
+      gameManager.pontos.p2Wins = gamedata.pontos.p2Wins
 
-    gameManager.spawnBolaValues = game.spawnBolaValues
-    gameManager.pontos.p1 = game.pontos.p1
-    gameManager.pontos.p2 = game.pontos.p2
-    console.log(gameManager.pontos)
-    if (!hasWinner(gameManager.pontos.p1, gameManager.pontos.p2))
-      respawnBola(gameManager.actualScene)
-    else
-      gameManager.bola.destroy()
-    
+
+      updateGameState(GAME_STATE_RUNNING)
+    }
+  })
+
+  gameManager.socket.on('updateGame', function (data) {
+    if(data.player === 'p1') {
+      gameManager.p1.y = data.playerObject.y
+      gameManager.bola.x = data.bola.x
+      gameManager.bola.y = data.bola.y
+      gameManager.pontos.p1 = data.pontos.p1
+      gameManager.pontos.p2 = data.pontos.p2
+      gameManager.pontos.p1Wins = data.pontos.p1Wins
+      gameManager.pontos.p1Wins = data.pontos.p1Wins
+      
+    } else {
+      gameManager.p2.y = data.playerObject.y
+    }
   })
 
 }
@@ -238,9 +276,9 @@ function update() {
 
         spawnBola(gameManager.actualScene, gameManager.spawnBolaValues.directionH, gameManager.spawnBolaValues.directionV, gameManager.spawnBolaValues.velocity)
       }
-
-      movePlayer(gameManager.p1, gameManager.inputs.keyW, gameManager.inputs.keyS)
-      movePlayer(gameManager.p2, gameManager.inputs.keyUp, gameManager.inputs.keyDown)
+  
+      movePlayer(gameManager.thisPlayer, gameManager.inputs.keyW, gameManager.inputs.keyS)
+      //movePlayer(gameManager.p2, gameManager.inputs.keyUp, gameManager.inputs.keyDown)
 
       gameManager.pontos.p1Text.setText(`${gameManager.pontos.p1}`)
       gameManager.pontos.p2Text.setText(`${gameManager.pontos.p2}`)
@@ -298,19 +336,26 @@ function movePlayer(player, up, down) {
   } else if (down.isDown) {
     player.y += 10
   }
+  let bola = ''
+  let pontos = ''
+  if(gameManager.thisPlayerText === 'p1') {
+    bola = gameManager.bola
+    pontos = gameManager.pontos
+  }
+  gameManager.socket.emit('syncGame', { playerObject: player, player: gameManager.thisPlayerText, bola, pontos })
 }
 
 function processPontuou(body, up, down, left, right) {
   let quemPontuou = pontuou(body, up, down, left, right)
   if (quemPontuou.pontuou) {
     gameManager.audio.ponto.play()
-    gameManager.socket.emit('pontuou', { quem: quemPontuou.quem, pontos: { p1: gameManager.pontos.p1, p2: gameManager.pontos.p2 } })
-    /*
+    //gameManager.socket.emit('pontuou', { quem: quemPontuou.quem, pontos: { p1: gameManager.pontos.p1, p2: gameManager.pontos.p2 } })
+
     if (!hasWinner(gameManager.pontos.p1, gameManager.pontos.p2))
       respawnBola(gameManager.actualScene)
     else
       gameManager.bola.destroy()
-    */
+
   }
 }
 
@@ -363,6 +408,19 @@ function spawnBola(scene, directionH, directionV, velocity) {
 
 function playAudioBola() {
   gameManager.audio.bolaImpacts[Phaser.Math.Between(0, 4)].play()
+}
+
+function getSpawnBolaValues() {
+  const values = {
+    directionH: getRndInteger(1, 3),
+    directionV: getRndInteger(1, 3),
+    velocity: getRndInteger(300, 401)
+  }
+  return values
+}
+
+function getRndInteger(min, max) {
+  return Math.floor(Math.random() * (max - min)) + min;
 }
 
 const game = new Phaser.Game(config);

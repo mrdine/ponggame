@@ -24,12 +24,13 @@ server.listen(3000, ip, function () {
 
 
 const clients = []
+let player1, player2
 io.on('connection', function (socket) {
 
   let playersNumber = Object.entries(game.players).length
   if (playersNumber < 2) {
     console.log('jogador conectado');
-
+    
     game.players[socket.id] = {
       playerId: socket.id,
       playerNumber: playersNumber + 1
@@ -42,78 +43,45 @@ io.on('connection', function (socket) {
     playersNumber = Object.entries(game.players).length
 
     clients.push(socket)
-
+    clients.length === 1 ? player1 = socket : player2 = socket
   } else {
     socket.disconnect();
   }
 
   console.log(playersNumber)
   if (playersNumber == 2 && game.gameState === GAME_STATE_IDLE) {
-    changeGameState(GAME_STATE_RUNNING)
-    socket.broadcast.emit('startGame', game)
-    socket.emit('startGame', game)
+    socket.broadcast.emit('startGame')
+    socket.emit('startGame')
 
   }
 
 
   socket.on('disconnect', function () {
-    changeGameState(GAME_STATE_IDLE)
     console.log('jogador desconectado');
     // remove this player from our players object
     delete game.players[socket.id];
 
     socket.broadcast.emit('playerSaiu', game)
-    restartGame()
     for (let client of clients) {
       client.disconnect()
     }
   });
 
-  socket.on('pontuou', function (quemPontuou) {
-    const { quem, pontos } = quemPontuou
-    console.log('pontos cliente: ')
-    console.log(pontos)
-    console.log('pontos servidor: ')
-    console.log(game.pontos)
-    if (!((pontos.p1 === game.pontos.p1) && (pontos.p2 === game.pontos.p2))) {
-      console.log('oi')
-      if (quem === 'p1') {
-        game.pontos.p1 += 1
-      } else {
-        game.pontos.p2 += 1
-      }
-      // verificar se houve ganhador
-
-      // spawnar bola
-      game.spawnBolaValues = getSpawnBolaValues()
-
-      for (client of clients) {
-        client.emit('respostaPontuou', game)
-      }
-    }
-
+  socket.on('repasseStartGame', async function (gameManager) {
+    await socket.broadcast.emit('clientStartGame', gameManager)
   })
+
+  socket.on('syncGame', async function (data) {
+    if(data.player === 'p1') {
+      clients[1].emit('updateGame', data)
+    } else {
+      clients[0].emit('updateGame', data)
+    }
+  })
+  
 });
 
-function restartRound() {
-  game.pontos.p1 = 0
-  game.pontos.p2 = 0
 
-}
-
-function restartGame() {
-  restartRound()
-  game.pontos.p1Wins = 0
-  game.pontos.p2Wins = 0
-
-}
-
-function changeGameState(state) {
-  if (state === GAME_STATE_RUNNING) {
-    game.spawnBolaValues = getSpawnBolaValues()
-  }
-  game.gameState = state
-}
 
 function getSpawnBolaValues() {
   const values = {
