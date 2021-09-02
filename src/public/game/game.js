@@ -214,6 +214,7 @@ function create() {
       gameManager.pontos.p1Wins = gamedata.pontos.p1Wins
       gameManager.pontos.p2Wins = gamedata.pontos.p2Wins
 
+      
 
       updateGameState(GAME_STATE_RUNNING)
     }
