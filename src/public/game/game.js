@@ -447,7 +447,7 @@ function getSpawnBallValues() {
 const windowSize = { width: 800, height: 600 }
 
 // TODO @imns1ght: create a config.js
-const phaserConfig = {
+export const phaserConfig = {
   type: Phaser.AUTO,
   audio: {
     disableWebAudio: true

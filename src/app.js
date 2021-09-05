@@ -1,8 +1,8 @@
-var netInterface = require('os').networkInterfaces() // Used to get the current IP address
-var express = require('express')
-var app = express()
-var server = require('http').Server(app)
-var io = require('socket.io')(server)
+import { getCurrentIPAddress } from './utils'
+const express = require('express')
+const app = express()
+const server = require('http').Server(app)
+const io = require('socket.io')(server)
 
 app.use(express.static(__dirname + '/public'))
 
@@ -10,16 +10,9 @@ app.get('/', function (_req, res) {
   res.sendFile(`${__dirname}/public/views/index.html`)
 })
 
-// Get the current IP adress
-const ip = Object.values(netInterface)
-  .flat()
-  .find((i) => i.family == 'IPv4' && !i.internal).address
-
-server.listen(3000, ip, function () {
-  console.log(
-    `Hospedando em ${server.address().address}:${server.address().port}`
-  )
-  //console.log(Object.entries(players))
+// Start server hosting
+server.listen(3000, getCurrentIPAddress(), function () {
+  console.log(`Hosting: ${server.address().address}:${server.address().port}\n`)
 })
 
 const game = {
@@ -34,8 +27,10 @@ const gameStatus = { idle: 0, running: 1, finished: 2 }
 
 const clients = []
 let player1, player2
+
 io.on('connection', function (socket) {
   let playersNumber = Object.entries(game.players).length
+
   if (playersNumber < 2) {
     console.log('jogador conectado')
 
