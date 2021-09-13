@@ -26,7 +26,7 @@ const game = {
   maxScore: 3
 }
 
-const clientsSockets = []
+let clientsSockets = []
 const players = { p1: {}, p2: {} }
 
 io.on('connection', (socket) => {
@@ -63,14 +63,53 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('playerLeft', game)
 
     for (let client of clientsSockets) client.disconnect()
+    clientsSockets = [];
   })
 
   socket.on('startGame', (gameManager) => {
-    socket.broadcast.emit('clientStartGame', gameManager)
+    let data = {
+        maxScore : gameManager.maxScore,
+        spawnBallValues : gameManager.spawnBallValues,
+        gameState : gameManager.gameState,
+        previousState : gameManager.previousState,
+        score : {
+            p1 : gameManager.score.p1,
+            p2 : gameManager.score.p2,
+            p1Wins : gameManager.score.p1Wins,
+            p2Wins : gameManager.score.p2Wins
+        }
+    }
+
+    socket.broadcast.emit('clientStartGame', data)
   })
 
   socket.on('syncGame', (data) => {
-    if (data.player === 'p1') clientsSockets[1].emit('updateGame', data)
-    else clientsSockets[0].emit('updateGame', data)
+    let dataFiltered = null;
+    if (data.player === 'p1') {
+        dataFiltered = {
+            player: data.player,
+            playerObject_y: data.playerObject.y,
+            score: data.score != undefined ? {
+                p1: data.score.p1,
+                p2: data.score.p2,
+                p1Wins: data.score.p1Wins,
+                p2Wins: data.score.p2Wins
+            } : data.score,
+            ball: ( data.ball != undefined || data.ball === "" ) ? {
+                x: data.ball.x,
+                y: data.ball.y
+            } : data.ball,
+            gameState: data.gameState
+        };
+     clientsSockets[1].emit('updateGame', dataFiltered)
+    }
+    else {
+        dataFiltered = {
+            player: data.player,
+            playerObject_y: data.playerObject.y,
+            gameState: data.gameState
+        };
+        clientsSockets[0].emit('updateGame', dataFiltered)
+    }
   })
 })

@@ -204,8 +204,8 @@ function create() {
 
   gameManager.socket.on('updateGame', (data) => {
     if (data.player === 'p1') {
-      if (data.playerObject && data.playerObject.y)
-        gameManager.p1.y = data.playerObject.y
+      if (data.playerObject && data.playerObject_y)
+        gameManager.p1.y = data.playerObject_y
       if (data.ball) {
         gameManager.ball.x = data.ball.x
         gameManager.ball.y = data.ball.y
@@ -218,7 +218,7 @@ function create() {
       }
       if (data.gameState) updateGameState(data.gameState)
     } else {
-      gameManager.p2.y = data.playerObject.y
+      gameManager.p2.y = data.playerObject_y
     }
   })
 
@@ -357,7 +357,7 @@ function updateGameState(newState) {
   gameManager.previousState = gameManager.gameState
   gameManager.gameState = newState
 
-  console.log({ prev: gameManager.previousState, curr: gameManager.gameState })
+  //console.log({ prev: gameManager.previousState, curr: gameManager.gameState })
 }
 
 function movePlayer(player, up, down) {
