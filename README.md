@@ -39,7 +39,7 @@ Assuming that you have installed [Git](https://git-scm.com/) and [NodeJS LTS](ht
 
 ## TODO
 
-- [ ] Implement multiplayer online
+- [x] Implement multiplayer online
 
 ## Authors
 
